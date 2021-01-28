@@ -1,8 +1,8 @@
 <template>
         <v-container id="back">
             <v-btn block large color="primary" @click="voteCreateDialog = true">Создать опрос</v-btn>
-            <v-dialog v-model="voteCreateDialog" min-widdth="700" max-width="800" content-class="round">
-                    <v-card v-show="count == 1" class="createVote">
+            <v-dialog v-model="voteCreateDialog" min-width="900" max-width="900" content-class="round">
+                    <v-card style="border: 0px; border-radius: 0" class="createVote">
                         <v-card-title id="headline" class="justify-center">Создать опрос</v-card-title>
                         <v-card-text>
                             <v-row class="voteInput">
@@ -32,19 +32,19 @@
                                 </v-col>
                             </v-row>
                         </v-card-text>
-                        <v-card-actions>
-                            <v-btn id="btn-cancel" text @click="clearVote">Отмена</v-btn>
-                            <v-spacer></v-spacer>
-                            <v-btn id="btn-add" text @click="createVote">Создать</v-btn>
-                            <v-spacer></v-spacer>
-                            <v-btn id="btn-add" text @click="next">К вопросу {{count}}</v-btn>
-                        </v-card-actions>
                     </v-card>
-                    <v-card v-show="count > 1" class="createVote">
-                        
-                            <v-card-title id="headline" class="justify-center">Вопрос {{count-1}}</v-card-title>
+                    
+                    <div v-for="(question, i) in questions" v-bind:key="i">
+                        <v-card style="border: 0px; border-radius: 0" class="createVote">
+                            <v-row>
+                                <v-col>
+                                    <v-card-title id="headline" class="justify-center">Вопрос {{i+1}}<v-spacer></v-spacer>
+                                    <v-btn @click="delQuest(i)">Удалить</v-btn></v-card-title>
+                                </v-col>
+                            </v-row>
                             <v-card-text>
-                                <v-radio-group v-model="questionType">
+                                <v-text-field v-model="question.questionText" class="voteText" placeholder="Текст вопроса"></v-text-field>
+                                <v-radio-group v-model="question.questionType">
                                     <v-radio
                                         label="Вопрос с выбором ответа"
                                         value="radio"
@@ -53,47 +53,84 @@
                                         label="Вопрос с ползунком"
                                         value="slider"
                                     ></v-radio>
+                                    <v-radio
+                                        label="Вопрос с цифрой"
+                                        value="number"
+                                    ></v-radio>
                                 </v-radio-group>
                                 <v-form ref="form">
-                                    <v-row v-show="questionType == 'radio'" class="voteInput">
-                                        <v-col cols="12">
-                                            <v-text-field class="voteText" v-model="variant1" placeholder="Вариант 1"></v-text-field>
-                                        </v-col>
-                                    </v-row>
-                                    <v-row v-show="questionType == 'radio'" class="voteInput">
-                                        <v-col cols="12">
-                                            <v-text-field class="voteText" v-model="variant2" placeholder="Вариант 2"></v-text-field>
-                                        </v-col>
-                                    </v-row>
-                                    <v-template v-show="questionType == 'radio'" v-model="variants" v-for="variant of variants" :key="variant">
-                                        <v-row class="voteInput">
-                                            <v-col v-if="variant < var_count" cols="11" style="display: inline-flex">
-                                                <v-text-field :id="variant" class="voteText" placeholder="Добавленный вариант"></v-text-field>
-                                                <v-btn @click="delVar(variant)" outlined class="delete_var">Удалить</v-btn>
+                                    <v-template v-show="question.questionType == 'radio' || question.questionType == 'slider'">
+                                        <v-row class="voteInput" v-for="(variant, j) in question.answers" v-bind:key="j">
+                                            <v-col cols="11" style="display: inline-flex">
+                                                <v-text-field v-model="variant.text" class="voteText" :placeholder="'Вариант '+(j+1)"></v-text-field>
+                                                <v-btn v-if="question.answers.length > 2" @click="delVar(question, j)" outlined class="delete_var">Удалить</v-btn>
                                             </v-col>
-                                            <v-col v-else cols="12">
-                                                <v-text-field class="voteText" @click="addVar" placeholder="Добавить вариант"></v-text-field>
+                                        </v-row>
+                                        <v-btn @click="addVar(question)">Добавить вариант</v-btn>
+                                    </v-template>
+                                    <v-template v-show="question.questionType == 'number'">
+                                        <v-row class="voteInput">
+                                            <v-col cols="11" style="display: inline-flex">
+                                                <v-text-field v-model="question.lowerBorder" class="voteText" placeholder="Ограничения снизу (если есть)"></v-text-field>
+                                            </v-col>
+                                        </v-row>
+                                        <v-row class="voteInput">
+                                            <v-col cols="11" style="display: inline-flex">
+                                                <v-text-field v-model="question.upperBorder" class="voteText" placeholder="Ограничения сверху (если есть)"></v-text-field>
                                             </v-col>
                                         </v-row>
                                     </v-template>
                                 </v-form>
-                                <v-col v-show="questionType == 'slider'" cols="12">
-                                    <v-text-field label="Количество делений" class="voteText" type="number" v-model="number"></v-text-field>
-                                </v-col>
-                                <v-row v-show="number > 0 && questionType == 'slider'" class="voteInput">
-                                    <v-col cols="12" v-for="i in Number(number)" :key="i" style="display: inline-flex">
-                                        <v-text-field class="voteText" :placeholder="'Ползунок на отметке '+i"></v-text-field>
-                                    </v-col>
-                                </v-row>
                             </v-card-text>
-                            <v-card-actions>
-                                <v-btn id="btn-cancel" text @click="clearVote">Отмена</v-btn>
-                                <v-spacer></v-spacer>
-                                <v-btn id="btn-add" text @click="createVote">Создать</v-btn>
-                                <v-spacer></v-spacer>
-                                <v-btn text @click="next">К вопросу {{count}}</v-btn>
-                            </v-card-actions>
-                        
+                        </v-card>
+                    </div>
+
+                    <div v-for="(reaction, i) in reactions" v-bind:key="i">
+                        <v-card style="border: 0px; border-radius: 0">
+                             <v-row>
+                                <v-col>
+                                    <v-card-title id="headline" class="justify-center">Реакция {{i+1}}<v-spacer></v-spacer>
+                                    <v-btn @click="delReact(i)">Удалить</v-btn></v-card-title>
+                                </v-col>
+                            </v-row>
+                        </v-card>
+                        <v-card-text>
+                            <v-row>
+                                <v-col>
+                                    <v-select
+                                        v-model="reaction.question"
+                                        :items="questionsForReact"
+                                        :error-messages="errors"
+                                        label="Выберите вопрос"
+                                        data-vv-name="select"
+                                        required
+                                    ></v-select>
+                                </v-col>
+                                <v-col>
+                                    <v-select
+                                        v-model="reaction.label"
+                                        :items="labels"
+                                        :error-messages="errors"
+                                        label="Выберите знак"
+                                        data-vv-name="select"
+                                        required
+                                    ></v-select>
+                                </v-col>
+                                <v-col>
+                                    
+                                </v-col>
+                            </v-row>
+                        </v-card-text>
+                    </div>
+
+                    <v-card style="border: 0px; border-radius: 0" class="createVote">
+                        <v-card-actions>
+                            <v-btn id="btn-add" text @click="addQuestion">Добавить вопрос</v-btn>
+                            <v-spacer></v-spacer>
+                            <v-btn id="btn-add" text @click="addReaction">Добавить реакции</v-btn>
+                            <v-spacer></v-spacer>
+                            <v-btn id="btn-add" text @click="create">Создать</v-btn>
+                        </v-card-actions>
                     </v-card>
             </v-dialog> 
         </v-container>
@@ -110,12 +147,10 @@
             descrForSelfVote: '',
             voteCreateDialog: false,
             questionType: null,
-            variants: ['1'],
-            var_count: 1,
-            variant1: "",
-            variant2: "",
-            count: 1,
-            number: 1,
+            questions: [],
+            questionsForReact: [],
+            reactions: [],
+            labels: ['>', '<', '=', '!=', '>=', '<='],
             vote: {
                 title: '',
                 descrDoctor: '',
@@ -128,26 +163,33 @@
         }
     },
     methods: {
-        addVar() {
-            let vars = [];
-            for(let i = 1; i < this.var_count; i++) {
-                if(document.getElementById(i) != undefined) vars.push(document.getElementById(i).value);
-            }
-            if(vars.indexOf("") == -1) this.variants.push(++this.var_count);
+        addVar(quest) {
+            quest.answers.push({text: ''});
         },
-        delVar(elem) {
-            this.variants.splice(this.variants.indexOf(elem), 1);
+        delVar(quest, index) {
+            quest.answers.splice(index, 1);
         },
-        questToQuest() {
-            if(this.questionType == 'radio')
-                this.vote.questions.push({
-                    questionType: this.questionType,
-                });
-            else if(this.questionType == 'slider')
-                this.vote.questions.push({
-                    questionType: this.questionType,
-                });
-            this.vote.numberOfQuest++;
+        addQuestion() {
+            this.questions.push({
+                questionType: '',
+                questionText: '',
+                lowerBorder: null,
+                upperBorder: null,
+                answers: [{text: ''}, {text: ''}]
+            });
+            this.questionsForReact.push('Вопрос '+this.questions.length);
+        },
+        delQuest(index) {
+            this.questions.splice(index, 1);
+        },
+        addReaction() {
+            this.reactions.push({
+                question: null,
+                label: null,
+            });
+        },
+        delReact(index) {
+            this.reactions.splice(index, 1);
         },
         next() {
             if(this.questionType == 'radio') {
